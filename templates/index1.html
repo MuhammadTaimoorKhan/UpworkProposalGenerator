@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProPosalCraft – Upwork Proposal Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
+      overflow-x: hidden;
+    }
+    .container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: linear-gradient(135deg, #1f1f1f, #2a2a2a);
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,255,255,0.2);
+      animation: fadeIn 1.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      background: #1c1c1c;
+      color: #ffffff;
+      border: 1px solid #555;
+      padding: 1rem;
+      border-radius: 8px;
+      resize: vertical;
+      transition: box-shadow 0.3s ease;
+    }
+    textarea:focus {
+      outline: none;
+      box-shadow: 0 0 10px #00f0ff;
+    }
+    .btn {
+      background-color: #00f0ff;
+      border: none;
+      color: black;
+      padding: 10px 20px;
+      border-radius: 6px;
+      margin: 1rem 0.5rem 0 0;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s ease, transform 0.2s;
+    }
+    .btn:hover {
+      background-color: #0ff;
+      transform: scale(1.05);
+    }
+    .btn:disabled {
+      background-color: #444;
+      color: #999;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 1rem;
+      font-style: italic;
+      color: #0ff;
+    }
+    #proposalPopup {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(10, 10, 10, 0.9);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    #popupContent {
+      background-color: #ffffff;
+      color: #000;
+      padding: 2rem;
+      border-radius: 10px;
+      width: 80%;
+      height: 70%;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 20px #00f0ff;
+    }
+    .markdown-output {
+  flex-grow: 1;
+  overflow-y: auto;
+  background: #ffffff;
+  color: #000000;
+  padding: 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  line-height: 1.5;
+  border: 1px solid #ccc;
+  white-space: pre-wrap; /* preserve line breaks */
+}
+
+    #proposalText {
+      flex-grow: 1;
+      background: #ffffff;
+      color: #000;
+      border: 1px solid #ccc;
+      padding: 1rem;
+      border-radius: 6px;
+      resize: none;
+      font-size: 1rem;
+    }
+    .popup-buttons {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 style="color:#00f0ff;">🚀 ProPosalCraft – Upwork Proposal Generator</h1>
+
+    <label for="jobDesc">💼 Job Description</label><br/>
+    <textarea id="job_Description" placeholder="Paste the job description here..."></textarea><br/>
+
+    <label for="profileDesc">🧑‍💼 Your Profile Description</label><br/>
+    <textarea id="profiledescription" placeholder="Paste your Upwork profile summary here..."></textarea><br/>
+
+    <button class="btn" onclick="generateProposal()">Generate Proposal</button>
+    <button class="btn" id="viewBtn" onclick="showProposal()" disabled>View Your Proposal</button>
+    <button class="btn" onclick="clearAll()">Clear</button>
+
+    <p id="status"></p>
+  </div>
+
+  <!-- POPUP -->
+  <!-- Replace the popup content textarea with a div for rendered markdown -->
+<div id="proposalPopup">
+  <div id="popupContent">
+    <div id="proposalText" class="markdown-output"></div>
+    <div class="popup-buttons">
+      <button class="btn" onclick="downloadPDF()">📥 Download PDF</button>
+      <button class="btn" onclick="closePopup()">🔙 Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add marked.js CDN to parse markdown -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+  let generatedProposal = "";
+
+  function generateProposal() {
+    const job = document.getElementById("job_Description").value.trim();
+    const profile = document.getElementById("profiledescription").value.trim();
+
+    if (!job || !profile) {
+      alert("Please enter both Job Description and Profile Description.");
+      return;
+    }
+
+    document.getElementById("status").textContent = "⏳ Generating proposal...";
+    document.getElementById("viewBtn").disabled = true;
+
+    fetch("/get_proposal", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        job_Description: job,
+        profiledescription: profile
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      // Clean any unwanted intro text if present
+      generatedProposal = data.response.replace(/^.*Here's the proposal:\s*/i, "").trim();
+      document.getElementById("status").textContent = "✅ Proposal generated!";
+      document.getElementById("viewBtn").disabled = false;
+    })
+    .catch(err => {
+      console.error(err);
+      document.getElementById("status").textContent = "❌ Failed to generate proposal.";
+    });
+  }
+
+  function showProposal() {
+    // Convert markdown to HTML and inject into div
+    const htmlContent = marked.parse(generatedProposal);
+    const proposalDiv = document.getElementById("proposalText");
+    proposalDiv.innerHTML = htmlContent;
+    document.getElementById("proposalPopup").style.display = "flex";
+  }
+
+  function closePopup() {
+    document.getElementById("proposalPopup").style.display = "none";
+  }
+
+  function clearAll() {
+    document.getElementById("job_Description").value = "";
+    document.getElementById("profiledescription").value = "";
+    document.getElementById("status").textContent = "";
+    document.getElementById("viewBtn").disabled = true;
+    generatedProposal = "";
+  }
+
+  function downloadPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    // Get text content without markdown symbols for better PDF
+    const text = generatedProposal.replace(/[#_*`>-]/g, "");
+    const lines = doc.splitTextToSize(text, 180);
+    doc.text(lines, 10, 10);
+    doc.save("Upwork_Proposal.pdf");
+  }
+</script>
+
+</body>
+</html>
